@@ -1,0 +1,16 @@
+# build output
+build/
+firmware/build/
+android/build/
+managed_components/
+sdkconfig
+sdkconfig.old
+*.apk
+*.bin
+*.elf
+*.map
+
+# local tooling
+.DS_Store
+.vscode/
+.idea/
