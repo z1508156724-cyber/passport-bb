@@ -69,6 +69,8 @@ static int64_t locator_until, phone_ring_until;
 static bool phone_ring_failed;
 static const char *media_status;
 static int64_t media_until;
+/* A press edge already acted on the key; drop the click the driver reports later. */
+static bool press_used;
 static lv_obj_t *root;
 static const uint32_t ink = 0x182a1c, subdued = 0x344a30;
 static const uint32_t lcd_background = 0xb8c891, panel = 0xa1b47b;
@@ -798,6 +800,20 @@ static void accept(pager_message msg)
 
 static void input(button_input event)
 {
+    /* The driver reports a click only after release plus the window it reserves for
+       a possible second tap, which this pager never uses. The navigation keys act
+       on the press edge instead and the click that follows is dropped, so the cursor
+       moves while the finger is still down. Confirm keeps click semantics so that a
+       long press still reaches the page-level long actions. */
+    if (event.event == BSP_BTN_PRESS) {
+        if (event.key == BSP_BTN_OK) return;
+        event.event = BSP_BTN_CLICK;
+        press_used = true;
+    } else if (event.event == BSP_BTN_CLICK) {
+        bool consumed = press_used;
+        press_used = false;
+        if (consumed && event.key != BSP_BTN_OK) return;
+    } else if (event.event == BSP_BTN_DOUBLE) return;
     bool ok = event.key == BSP_BTN_OK;
     int step = event.key == BSP_BTN_UP ? -1 : 1;
     if (locator_until) {
@@ -860,7 +876,6 @@ static void input(button_input event)
         }
         return;
     }
-    if (event.event == BSP_BTN_DOUBLE) return;
     if (event.event == BSP_BTN_LONG) {
         if (ok) {
             page = page == MENU ? INBOX : MENU;
@@ -1122,6 +1137,6 @@ void app_main(void)
             last_render = ms();
             dirty = false;
         }
-        vTaskDelay(pdMS_TO_TICKS(60));
+        vTaskDelay(pdMS_TO_TICKS(25));
     }
 }
