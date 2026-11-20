@@ -23,8 +23,8 @@ static lv_font_t display_font, extra_font;
 void pager_screenshot_start(lv_display_t *target);
 enum {INBOX, MENU, DETAILS, STATS, STOPWATCH, POMODORO, DND, APP_ALERTS, CLOCK, PAIRING, CLOCK_SETTINGS, DEVICE_SETTINGS, FIND_DEVICE, MEDIA};
 enum {MAX_MESSAGES = 24, MAX_APP_RULES = 12};
-static const char *menus[] = {"今日统计", "秒表", "番茄钟", "免打扰", "应用提醒", "息屏时钟", "蓝牙配对设置", "查找设备", "媒体控制", "设置"};
-static const int pages[] = {STATS, STOPWATCH, POMODORO, DND, APP_ALERTS, CLOCK_SETTINGS, PAIRING, FIND_DEVICE, MEDIA, DEVICE_SETTINGS};
+static const char *menus[] = {"今日统计", "应用提醒", "秒表", "番茄钟", "免打扰", "息屏时钟", "蓝牙配对", "查找设备", "媒体控制", "设置"};
+static const int pages[] = {STATS, APP_ALERTS, STOPWATCH, POMODORO, DND, CLOCK_SETTINGS, PAIRING, FIND_DEVICE, MEDIA, DEVICE_SETTINGS};
 enum {MENU_COUNT = sizeof(menus) / sizeof(menus[0])};
 _Static_assert(MENU_COUNT == sizeof(pages) / sizeof(pages[0]), "menu/page count mismatch");
 static pager_message inbox[MAX_MESSAGES];
@@ -483,15 +483,18 @@ static void render(void)
         } else footer(count ? "确定查看  长按下键息屏" : "长按菜单  长按下键息屏");
     } else if (page == MENU) {
         header("功能菜单");
+        /* Two-column launcher grid: ten entries stay visible without a long list. */
         for (int i = 0; i < MENU_COUNT; i++) {
-            int y = 73 + i * 22;
-            if (i == menu_selected) box(14, y, 212, 22, panel);
+            int x = 16 + (i % 2) * 106;
+            int y = 70 + (i / 2) * 41;
+            bool picked = i == menu_selected;
+            box(x, y, 104, 36, picked ? ink : panel);
             /* The bitmap font's ink begins below the top of its line box. */
-            lv_obj_t *item = label(menus[i], 14, y - 6, 212, 31,
-                                   i == menu_selected ? bright : ink, false, false);
+            lv_obj_t *item = label(menus[i], x, y + 1, 104, 31,
+                                   picked ? lcd_background : ink, false, false);
             lv_obj_set_style_text_align(item, LV_TEXT_ALIGN_CENTER, 0);
         }
-        footer("确定进入   长按下键息屏");
+        footer("确定进入   上下选择");
     } else if (page == STATS) {
         header("今日统计");
         snprintf(text, sizeof(text), "%d", daily_count);
