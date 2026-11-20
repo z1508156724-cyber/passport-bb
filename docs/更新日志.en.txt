@@ -1,0 +1,1 @@
+Gameplay images updated to real on-device screen captures: new notification popup, inbox list, notification detail and Bluetooth pairing settings. Firmware and instructions are unchanged.

@@ -1,0 +1,4 @@
+1. Install the play and turn on your Passport. No Wi-Fi setup is needed. Hold OK for the menu and open a pairing window in Bluetooth Pairing Settings.
+2. On iPhone, select Passport BB in system Bluetooth settings and allow system notification sharing. On Android, install the creator-supplied Notification Companion, grant Bluetooth and notification access, connect from the app, and accept the system pairing prompt.
+3. Glance at the popup when a notification arrives. On the inbox, use Up and Down to select a message and press OK to view it. In the detail view, hold Up and press OK to delete that message.
+4. Hold Down to turn the screen off, and press any function button to wake it. While connected on Android, use Find Settings in the companion to ring the Passport, or Find Device on the Passport to ring the phone.
