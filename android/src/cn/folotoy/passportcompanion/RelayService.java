@@ -14,6 +14,9 @@ import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
+import android.media.session.MediaController;
+import android.media.session.PlaybackState;
+import android.media.session.MediaSessionManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -551,6 +554,8 @@ public final class RelayService extends NotificationListenerService {
             if (connection != gatt || !locatorReady || !authorized || paused) return;
             if (value.length == 1 && (value[0] == 0 || value[0] == 1)) {
                 ringPhone(value[0] == 1);
+            } else if (value.length == 1 && value[0] >= 3 && value[0] <= 5) {
+                mediaTransport(value[0] - 3);
             } else if (value.length == 11 && value[0] == 2 && settingsBusy &&
                        (value[1] & 255) == (settingsToken & 255)) {
                 int response = value[2] & 255;
@@ -561,6 +566,36 @@ public final class RelayService extends NotificationListenerService {
                                response == 2 ? "设备拒绝了无效设置" : "设备保存失败");
             }
         });
+    }
+
+    /* 0 = previous, 1 = next, 2 = play/pause for whatever is currently playing.
+     * Notification access is what allows reading other apps' media sessions here. */
+    private void mediaTransport(int action) {
+        try {
+            MediaSessionManager manager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
+            if (manager == null) return;
+            java.util.List<MediaController> sessions =
+                manager.getActiveSessions(new ComponentName(this, RelayService.class));
+            MediaController target = null;
+            for (MediaController candidate : sessions) {
+                PlaybackState state = candidate.getPlaybackState();
+                if (state == null) continue;
+                int code = state.getState();
+                if (code == PlaybackState.STATE_PLAYING) { target = candidate; break; }
+                if (target == null && code != PlaybackState.STATE_STOPPED &&
+                    code != PlaybackState.STATE_ERROR && code != PlaybackState.STATE_NONE) target = candidate;
+            }
+            if (target == null) return;
+            MediaController.TransportControls controls = target.getTransportControls();
+            if (controls == null) return;
+            if (action == 0) controls.skipToPrevious();
+            else if (action == 1) controls.skipToNext();
+            else {
+                PlaybackState state = target.getPlaybackState();
+                boolean playing = state != null && state.getState() == PlaybackState.STATE_PLAYING;
+                if (playing) controls.pause(); else controls.play();
+            }
+        } catch (Exception ignored) { }
     }
 
     private void sendNext() {
