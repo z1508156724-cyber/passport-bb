@@ -151,6 +151,19 @@ bool pager_find_phone(bool start)
     return sent;
 }
 
+/* Media transport control for the phone's now-playing app.
+ * 3 = previous, 4 = next, 5 = play/pause. Values 0/1 stay reserved for ring requests
+ * and 2 introduces the settings frame, so the companion can tell them apart by length
+ * and first byte. */
+bool pager_media(int action)
+{
+    if (action < 0 || action > 2) return false;
+    uint8_t request = (uint8_t)(3 + action);
+    bool sent = pager_send_settings(&request, sizeof(request));
+    if (sent) ESP_LOGI("pager", "Media request=%u", request);
+    return sent;
+}
+
 static const struct ble_gatt_svc_def services[] = {
     {.type = BLE_GATT_SVC_TYPE_PRIMARY, .uuid = &service.u,
      .characteristics = (struct ble_gatt_chr_def[]) {

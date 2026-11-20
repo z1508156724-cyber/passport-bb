@@ -26,6 +26,7 @@ void pager_tone_volume(uint8_t percent);
 
 bool pager_locator_ready(void);
 bool pager_find_phone(bool start);
+bool pager_media(int action);
 void pager_locator_receive(bool start);
 void pager_locator_tone(bool active);
 

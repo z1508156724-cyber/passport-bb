@@ -21,10 +21,10 @@ LV_FONT_DECLARE(pager_extra);
 LV_FONT_DECLARE(pager_emoji);
 static lv_font_t display_font, extra_font;
 void pager_screenshot_start(lv_display_t *target);
-enum {INBOX, MENU, DETAILS, STATS, STOPWATCH, POMODORO, DND, APP_ALERTS, CLOCK, PAIRING, CLOCK_SETTINGS, DEVICE_SETTINGS, FIND_DEVICE};
+enum {INBOX, MENU, DETAILS, STATS, STOPWATCH, POMODORO, DND, APP_ALERTS, CLOCK, PAIRING, CLOCK_SETTINGS, DEVICE_SETTINGS, FIND_DEVICE, MEDIA};
 enum {MAX_MESSAGES = 24, MAX_APP_RULES = 12};
-static const char *menus[] = {"今日统计", "秒表", "番茄钟", "免打扰", "应用提醒", "息屏时钟", "蓝牙配对设置", "查找设备", "设置"};
-static const int pages[] = {STATS, STOPWATCH, POMODORO, DND, APP_ALERTS, CLOCK_SETTINGS, PAIRING, FIND_DEVICE, DEVICE_SETTINGS};
+static const char *menus[] = {"今日统计", "秒表", "番茄钟", "免打扰", "应用提醒", "息屏时钟", "蓝牙配对设置", "查找设备", "媒体控制", "设置"};
+static const int pages[] = {STATS, STOPWATCH, POMODORO, DND, APP_ALERTS, CLOCK_SETTINGS, PAIRING, FIND_DEVICE, MEDIA, DEVICE_SETTINGS};
 enum {MENU_COUNT = sizeof(menus) / sizeof(menus[0])};
 _Static_assert(MENU_COUNT == sizeof(pages) / sizeof(pages[0]), "menu/page count mismatch");
 static pager_message inbox[MAX_MESSAGES];
@@ -67,6 +67,8 @@ typedef struct { pager_message msg; bool remove, clear; } inbox_event;
 static QueueHandle_t messages, buttons, clocks, locator_events;
 static int64_t locator_until, phone_ring_until;
 static bool phone_ring_failed;
+static const char *media_status;
+static int64_t media_until;
 static lv_obj_t *root;
 static const uint32_t ink = 0x182a1c, subdued = 0x344a30;
 static const uint32_t lcd_background = 0xb8c891, panel = 0xa1b47b;
@@ -539,6 +541,16 @@ static void render(void)
         label(connected ? "换手机前先断开" : "弹出系统提示后点配对", 18, 207, 205, 31, subdued, false, false);
         label("iPhone 从系统蓝牙连接", 18, 237, 205, 31, ink, false, false);
         footer(remaining ? "确定键关闭配对" : "确定键开启配对");
+    } else if (page == MEDIA) {
+        header("媒体控制");
+        bool available = pager_locator_ready();
+        box(14, 88, 212, 152, panel);
+        label(available ? "手机正在播放的音乐" : "手机未连接", 22, 104, 196, 31,
+              available ? ink : bright, false, false);
+        const char *state = media_status ? media_status : "上下键切换歌曲";
+        label(state, 22, 143, 196, 31, media_until ? bright : subdued, false, false);
+        label("确定键播放或暂停", 22, 181, 196, 31, ink, false, false);
+        footer(available ? "上下切歌   长按返回" : "长按确定返回");
     } else if (page == FIND_DEVICE) {
         header("查找设备");
         bool available = pager_locator_ready();
@@ -870,6 +882,18 @@ static void input(button_input event)
             page = pages[menu_selected];
             if (page == APP_ALERTS) { selected_app[0] = 0; app_rule_status = NULL; }
             if (page == DEVICE_SETTINGS) settings_field = 0;
+        }
+    } else if (page == MEDIA) {
+        if (pager_locator_ready()) {
+            bool sent;
+            if (ok) { sent = pager_media(2); media_status = "已发送 播放/暂停"; }
+            else if (step > 0) { sent = pager_media(1); media_status = "已发送 下一首"; }
+            else { sent = pager_media(0); media_status = "已发送 上一首"; }
+            if (!sent) media_status = "发送失败，请重试";
+            media_until = ms() + 2500;
+        } else {
+            media_status = "请先连接手机";
+            media_until = ms() + 2500;
         }
     } else if (page == FIND_DEVICE) {
         if (ok && pager_locator_ready()) {
