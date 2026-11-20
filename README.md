@@ -14,6 +14,8 @@ Turn a FoloToy AI Passport into a pocket pager: phone notifications arrive over 
 - 重要应用可设为常驻提醒，一直留到按键
 - 长按下键息屏，按任意功能键唤醒；息屏显示七段数字时钟
 - 安卓可在「通知伴侣」里让掌机响铃，掌机菜单「查找设备」可让手机响铃
+- 菜单「媒体控制」直接控制手机音乐：上键上一首、下键下一首、确定键播放或暂停
+- 功能菜单是两列宫格，十项功能一屏看全
 
 Screens captured from the device:
 
