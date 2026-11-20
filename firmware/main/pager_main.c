@@ -32,7 +32,7 @@ static bool pop_waiting[MAX_MESSAGES];
 static int count, selected, menu_selected, page, body_page, awake_page;
 enum {BODY_WIDTH = 196, BODY_HEIGHT = 110, BODY_LINE_SPACE = -8};
 static pager_message popup;
-static enum { DELETE_NONE, DELETE_ONE, DELETE_READ } delete_prompt;
+static enum { DELETE_NONE, DELETE_ONE, DELETE_READ, DELETE_ALL } delete_prompt;
 static struct {
     uint32_t id;
     bool apple, legacy;
@@ -426,19 +426,27 @@ static void render(void)
         return;
     }
     if (!alert && delete_prompt != DELETE_NONE) {
-        header(delete_prompt == DELETE_ONE ? "删除通知" : "清除已读");
+        header(delete_prompt == DELETE_ONE ? "删除通知" : delete_prompt == DELETE_READ ? "清除已读" : "清除全部");
         box(14, 92, 212, 120, panel);
         if (delete_prompt == DELETE_ONE) {
             label("删除这条通知？", 22, 111, 195, 31, ink, false, false);
             int index = delete_target_index();
             if (index >= 0) label(inbox[index].app, 22, 150, 195, 31, subdued, false, false);
             else label("通知已移除", 22, 150, 195, 31, subdued, false, false);
-        } else {
+        } else if (delete_prompt == DELETE_READ) {
             snprintf(text, sizeof(text), "清除 %d 条已读通知？", read_count());
             label(text, 22, 111, 195, 31, ink, false, false);
-            label("未读通知会保留", 22, 150, 195, 31, subdued, false, false);
+            label(count > read_count() ? "上下键改为全部清除" : "未读通知会保留",
+                  22, 150, 195, 31, subdued, false, false);
+        } else {
+            snprintf(text, sizeof(text), "清除全部 %d 条通知？", count);
+            label(text, 22, 111, 195, 31, ink, false, false);
+            if (read_count() && count > read_count()) {
+                snprintf(text, sizeof(text), "含 %d 条未读", count - read_count());
+                label(text, 22, 150, 195, 31, subdued, false, false);
+            } else label("收件箱会清空", 22, 150, 195, 31, subdued, false, false);
         }
-        footer("确定清除   上下键取消");
+        footer(delete_prompt == DELETE_ONE ? "确定清除   上下键取消" : "确定清除   上下切换");
         return;
     }
     if (alert || page == DETAILS) {
@@ -479,10 +487,26 @@ static void render(void)
             label(msg->title[0] ? msg->title : msg->body, 24, y + 21, 194, 18, ink, false, false);
             label(msg->title[0] ? msg->body : "", 24, y + 38, 194, 18, subdued, false, false);
         }
+        /* A track on the right edge shows where the three visible rows sit in the
+           whole inbox; without it a full inbox looks the same on page one and last. */
+        const int track_y = 76, track_h = 196;
+        if (count > 3) {
+            box(230, track_y, 4, track_h, panel);
+            int thumb = track_h * 3 / count;
+            if (thumb < 22) thumb = 22;
+            int span = track_h - thumb;
+            int pos = span * start / (count - 3);
+            box(230, track_y + pos, 4, thumb, ink);
+        }
+        if (count) {
+            snprintf(text, sizeof(text), "%d/%d", selected + 1, count);
+            lv_obj_t *at = label(text, 176, 37, 50, 31, subdued, false, false);
+            lv_obj_set_style_text_align(at, LV_TEXT_ALIGN_RIGHT, 0);
+        }
         if (read_count()) {
             box(16, 281, 208, 1, lcd_edge);
-            label("长按上清已读 长按下键息屏", 19, 282, 202, 31, subdued, false, false);
-        } else footer(count ? "确定查看  长按下键息屏" : "长按菜单  长按下键息屏");
+            label("长按上清通知 长按下键息屏", 19, 282, 202, 31, subdued, false, false);
+        } else footer(count ? "确定查看  长按上清空" : "长按菜单  长按下键息屏");
     } else if (page == MENU) {
         header("功能菜单");
         /* Two-column launcher grid: ten entries stay visible without a long list. */
@@ -845,19 +869,30 @@ static void input(button_input event)
         return;
     }
     if (delete_prompt != DELETE_NONE) {
+        if (event.event == BSP_BTN_LONG) {
+            delete_prompt = DELETE_NONE;
+            return;
+        }
         if (event.event == BSP_BTN_CLICK) {
             if (ok) {
                 if (delete_prompt == DELETE_ONE) {
                     int index = delete_target_index();
                     if (index >= 0) erase_message(index);
+                } else if (delete_prompt == DELETE_ALL) {
+                    for (int i = count - 1; i >= 0; i--) erase_message(i);
                 } else {
                     for (int i = count - 1; i >= 0; i--)
                         if (!inbox[i].unread) erase_message(i);
                 }
                 page = INBOX;
                 ESP_LOGI("pager", "Notification clear confirmed");
+                delete_prompt = DELETE_NONE;
+            } else if (delete_prompt == DELETE_ONE) {
+                delete_prompt = DELETE_NONE;
+            } else if (read_count() && count > read_count()) {
+                /* Up/Down swaps the two clear scopes while the confirmation stays open. */
+                delete_prompt = delete_prompt == DELETE_READ ? DELETE_ALL : DELETE_READ;
             }
-            delete_prompt = DELETE_NONE;
         }
         return;
     }
@@ -870,9 +905,11 @@ static void input(button_input event)
             strlcpy(delete_target.app, msg->app, sizeof(delete_target.app));
             delete_prompt = DELETE_ONE;
             ESP_LOGI("pager", "Single notification clear requested");
-        } else if (page == INBOX && read_count()) {
-            delete_prompt = DELETE_READ;
-            ESP_LOGI("pager", "Read notifications clear requested");
+        } else if (page == INBOX && count) {
+            /* Long-press Up opens the clear prompt; it defaults to wiping the whole
+               inbox and Up/Down switches to read-only if both kinds are present. */
+            delete_prompt = DELETE_ALL;
+            ESP_LOGI("pager", "Clear prompt opened");
         }
         return;
     }
