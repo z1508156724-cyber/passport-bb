@@ -34,6 +34,11 @@ docs/       使用方法（中/英）、隐私政策、更新日志
 images/     真机截屏与封面
 ```
 
+本仓库只保留构建与运行所需的代码：上游工程里的 `firmware/assets`（演示图片）、`firmware/docs`（
+上游开发文档）、`firmware/skills`（本地辅助脚本说明）和 `firmware/tests`（主机侧打桩测试）没有收录，
+不影响固件构建。This repository keeps only what is needed to build and run the play; the upstream
+`firmware/assets`, `firmware/docs`, `firmware/skills` and `firmware/tests` trees are omitted.
+
 ## 编译固件 / Build the firmware
 
 需要 ESP-IDF 5.5.x（工程约束 `< 5.6.0`），目标 `esp32c3`，8 MB flash。
