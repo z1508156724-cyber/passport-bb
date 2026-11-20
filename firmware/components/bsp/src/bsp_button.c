@@ -78,7 +78,13 @@ static int decoder_feed(bsp_btn_decoder_t *d, int window, int64_t now_us) {
         d->candidate = window;
         d->since_us = now_us;
     }
-    const int64_t need_us = (int64_t)(d->locked < 0 ? BSP_BTN_CONFIRM_MS : BSP_BTN_HOLD_MS) * 1000;
+    // Releasing is unambiguous: no other key window can be mistaken for it, so it
+    // only waits out a contact bounce instead of the full switch window. A switch
+    // to a different key needs the longer window that absorbs a glitch sweeping the
+    // ladder while a key is held.
+    int stable_ms = d->locked < 0 ? BSP_BTN_CONFIRM_MS
+                   : (d->candidate < 0 ? BSP_BTN_RELEASE_MS : BSP_BTN_HOLD_MS);
+    const int64_t need_us = (int64_t)stable_ms * 1000;
     if (now_us - d->since_us >= need_us) {
         d->locked = d->candidate;
         d->pending = false;
