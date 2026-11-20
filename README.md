@@ -16,6 +16,8 @@ Turn a FoloToy AI Passport into a pocket pager: phone notifications arrive over 
 - 安卓可在「通知伴侣」里让掌机响铃，掌机菜单「查找设备」可让手机响铃
 - 菜单「媒体控制」直接控制手机音乐：上键上一首、下键下一首、确定键播放或暂停
 - 功能菜单是两列宫格，十项功能一屏看全
+- 收件箱右侧有竖向进度条，标题栏显示「第几条/共几条」
+- 收件箱长按上键：确认页可「清除全部」或切到「清除已读」，确定即执行
 
 Screens captured from the device:
 
